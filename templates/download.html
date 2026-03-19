@@ -90,6 +90,57 @@
 
     </form>
 
+    <!-- CSV Upload Section -->
+    <div class="bg-white rounded-lg shadow p-6 space-y-4">
+        <h2 class="text-lg font-semibold text-gray-800">Upload World Bank CSV</h2>
+        <p class="text-sm text-gray-500">
+            If the API download returns no data for an indicator, you can download the CSV
+            directly from the World Bank and upload it here.
+        </p>
+
+        <!-- WB Direct Download Link Generator -->
+        <div class="bg-blue-50 border border-blue-200 rounded-md p-4 space-y-2">
+            <p class="text-sm font-medium text-blue-800">Generate WB Download Link</p>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs text-blue-700 mb-1">Country (ISO3)</label>
+                    <input type="text" id="wb-link-country" placeholder="e.g. PER"
+                           class="w-full rounded-md border border-blue-300 px-3 py-1.5 text-sm font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs text-blue-700 mb-1">Indicator Code</label>
+                    <input type="text" id="wb-link-indicator" placeholder="e.g. SE.XPD.TOTL.GD.ZS"
+                           class="w-full rounded-md border border-blue-300 px-3 py-1.5 text-sm font-mono">
+                </div>
+            </div>
+            <button type="button" onclick="generateWBLink()"
+                    class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700">
+                Generate Link
+            </button>
+            <div id="wb-link-output" class="hidden">
+                <a id="wb-link-url" href="#" target="_blank" rel="noopener"
+                   class="text-sm text-blue-600 underline break-all"></a>
+            </div>
+        </div>
+
+        <!-- File Upload -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Upload CSV File</label>
+            <input type="file" id="csv-file" accept=".csv"
+                   class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
+                          file:rounded-md file:border-0 file:text-sm file:font-medium
+                          file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+            <button type="button" onclick="uploadCSV()"
+                    class="px-6 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+                Upload & Import
+            </button>
+            <div id="upload-status" class="text-sm text-gray-500"></div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -167,6 +218,61 @@ async function submitDownload() {
         const data = await resp.json();
         if (resp.ok) {
             statusEl.innerHTML = `Job <a href="/api/downloads/${data.job_id}" class="text-blue-600 underline">#${data.job_id}</a> started! <a href="/jobs" class="text-blue-600 underline">View jobs</a>`;
+        } else {
+            statusEl.textContent = `Error: ${data.detail || JSON.stringify(data)}`;
+        }
+    } catch (err) {
+        statusEl.textContent = `Network error: ${err.message}`;
+    }
+}
+
+/* ── WB Direct Download Link Generator ─────────────────────────────── */
+
+function generateWBLink() {
+    const country = document.getElementById('wb-link-country').value.trim();
+    const indicator = document.getElementById('wb-link-indicator').value.trim();
+    const output = document.getElementById('wb-link-output');
+    const link = document.getElementById('wb-link-url');
+
+    if (!country || !indicator) {
+        output.classList.add('hidden');
+        return;
+    }
+
+    const url = `https://api.worldbank.org/v2/country/${country}/indicator/${indicator}?source=2&downloadformat=csv`;
+    link.href = url;
+    link.textContent = url;
+    output.classList.remove('hidden');
+}
+
+/* ── CSV Upload ────────────────────────────────────────────────────── */
+
+async function uploadCSV() {
+    const statusEl = document.getElementById('upload-status');
+    const fileInput = document.getElementById('csv-file');
+
+    if (!fileInput.files.length) {
+        statusEl.textContent = 'Please select a CSV file first.';
+        return;
+    }
+
+    statusEl.textContent = 'Uploading...';
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    try {
+        const resp = await fetch('/api/downloads/upload-csv', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+            let msg = `Imported ${data.upserted} data points (${data.skipped} empty cells skipped).`;
+            if (data.errors && data.errors.length) {
+                msg += ` ${data.errors.length} error(s).`;
+            }
+            statusEl.innerHTML = `<span class="text-green-700">${msg}</span> <a href="/browse" class="text-blue-600 underline">Browse data</a>`;
         } else {
             statusEl.textContent = `Error: ${data.detail || JSON.stringify(data)}`;
         }
