@@ -115,7 +115,25 @@ async def jobs_page(request: Request, session: AsyncSession = Depends(get_sessio
             select(WBDownloadJob).order_by(WBDownloadJob.created_at.desc()).limit(50)
         )
     ).scalars().all()
-    return templates.TemplateResponse(request, "jobs.html", {"jobs": jobs})
+
+    # Count data points per job, grouped by indicator
+    job_data_points: dict[int, dict[str, int]] = {}
+    for job in jobs:
+        rows = (
+            await session.execute(
+                select(
+                    WBDataPoint.indicator_code,
+                    func.count().label("cnt"),
+                )
+                .where(WBDataPoint.download_job_id == job.id)
+                .group_by(WBDataPoint.indicator_code)
+            )
+        ).all()
+        job_data_points[job.id] = {row.indicator_code: row.cnt for row in rows}
+
+    return templates.TemplateResponse(
+        request, "jobs.html", {"jobs": jobs, "job_data_points": job_data_points}
+    )
 
 
 # ── Data Browser ─────────────────────────────────────────────────────────

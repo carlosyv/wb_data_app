@@ -26,6 +26,7 @@
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Indicators</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Countries</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Years</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data Points</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Completed</th>
                 </tr>
@@ -59,12 +60,29 @@
                         {{ (job.country_codes or [])|join(', ') }}
                     </td>
                     <td class="px-4 py-3 text-sm text-gray-600">{{ job.year_start }}-{{ job.year_end }}</td>
+                    <td class="px-4 py-3 text-xs text-gray-600">
+                        {% set dp = job_data_points.get(job.id, {}) %}
+                        {% if dp %}
+                            {% for ind, cnt in dp.items() %}
+                            <div class="flex justify-between gap-2">
+                                <span class="font-mono truncate max-w-[140px]" title="{{ ind }}">{{ ind }}</span>
+                                <span class="text-gray-800 font-medium">{{ cnt }}</span>
+                            </div>
+                            {% endfor %}
+                            <div class="border-t border-gray-200 mt-1 pt-1 flex justify-between font-medium text-gray-800">
+                                <span>Total</span>
+                                <span>{{ dp.values()|sum }}</span>
+                            </div>
+                        {% else %}
+                            <span class="text-gray-400">0</span>
+                        {% endif %}
+                    </td>
                     <td class="px-4 py-3 text-sm text-gray-500">{{ job.created_at.strftime('%m/%d %H:%M') if job.created_at else '-' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-500">{{ job.completed_at.strftime('%m/%d %H:%M') if job.completed_at else '-' }}</td>
                 </tr>
                 {% if job.error_log %}
                 <tr>
-                    <td colspan="8" class="px-4 py-2 bg-red-50 text-xs text-red-700 font-mono whitespace-pre-wrap">{{ job.error_log }}</td>
+                    <td colspan="9" class="px-4 py-2 bg-red-50 text-xs text-red-700 font-mono whitespace-pre-wrap">{{ job.error_log }}</td>
                 </tr>
                 {% endif %}
                 {% endfor %}

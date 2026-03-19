@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+import csv
+import io
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from pydantic import BaseModel
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.engine import get_session
+from src.db.models import WBDataPoint
 from src.etl.download_manager import create_job, get_job, list_jobs, start_job_background
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/downloads", tags=["downloads"])
 
@@ -45,6 +53,118 @@ async def start_download(
         "job_id": job.id,
         "status": job.status,
         "total_requests": job.total_requests,
+    }
+
+
+@router.post("/upload-csv")
+async def upload_csv(
+    file: UploadFile,
+    session: AsyncSession = Depends(get_session),
+):
+    """Parse a World Bank CSV file and upsert data points into the database.
+
+    Expected WB CSV format:
+        Row 1: "Data Source","World Development Indicators",
+        Row 2: (blank)
+        Row 3: "Last Updated Date","YYYY-MM-DD",
+        Row 4: (blank)
+        Row 5: "Country Name","Country Code","Indicator Name","Indicator Code","1960","1961",...
+        Row 6+: data rows
+    """
+    if not file.filename or not file.filename.endswith(".csv"):
+        raise HTTPException(400, "Please upload a .csv file")
+
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+
+    reader = csv.reader(io.StringIO(text))
+    rows = list(reader)
+
+    # Find the header row (contains "Country Code" and "Indicator Code")
+    header_idx = None
+    for i, row in enumerate(rows):
+        if len(row) >= 5 and "Country Code" in row and "Indicator Code" in row:
+            header_idx = i
+            break
+
+    if header_idx is None:
+        raise HTTPException(
+            400,
+            "Could not find header row with 'Country Code' and 'Indicator Code'. "
+            "Make sure this is a World Bank CSV download.",
+        )
+
+    header = rows[header_idx]
+    # Find column indices
+    country_col = header.index("Country Code")
+    indicator_col = header.index("Indicator Code")
+
+    # Year columns: everything after "Indicator Code" that looks like a year
+    year_columns: list[tuple[int, int]] = []  # (col_index, year)
+    for col_i in range(indicator_col + 1, len(header)):
+        val = header[col_i].strip()
+        if val.isdigit() and 1900 <= int(val) <= 2100:
+            year_columns.append((col_i, int(val)))
+
+    if not year_columns:
+        raise HTTPException(400, "No year columns found in CSV header")
+
+    # Parse data rows
+    upserted = 0
+    skipped = 0
+    errors: list[str] = []
+
+    for row_num, row in enumerate(rows[header_idx + 1 :], start=header_idx + 2):
+        if not row or len(row) <= indicator_col:
+            continue
+
+        country_code = row[country_col].strip()
+        indicator_code = row[indicator_col].strip()
+
+        if not country_code or not indicator_code:
+            continue
+
+        for col_i, year in year_columns:
+            if col_i >= len(row):
+                continue
+            val_str = row[col_i].strip()
+            if not val_str:
+                skipped += 1
+                continue
+
+            try:
+                value = float(val_str)
+            except ValueError:
+                skipped += 1
+                continue
+
+            stmt = pg_insert(WBDataPoint).values(
+                indicator_code=indicator_code,
+                country_code=country_code,
+                year=year,
+                value=value,
+            ).on_conflict_do_update(
+                constraint="uq_data_point",
+                set_={"value": value},
+            )
+            try:
+                await session.execute(stmt)
+                upserted += 1
+            except Exception as exc:
+                errors.append(f"Row {row_num}, {indicator_code}/{country_code}/{year}: {exc}")
+                await session.rollback()
+
+    await session.commit()
+
+    logger.info("CSV upload: %d upserted, %d skipped, %d errors", upserted, skipped, len(errors))
+
+    return {
+        "upserted": upserted,
+        "skipped": skipped,
+        "errors": errors[:20],  # limit error output
     }
 
 
