@@ -41,7 +41,7 @@
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Countries</label>
             <div class="flex gap-2 mb-2">
-                <button type="button" onclick="setPreset('lac7')" class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">LAC-7</button>
+                <button type="button" onclick="setPreset('latam')" class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">Latin America</button>
                 <button type="button" onclick="setPreset('brics')" class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">BRICS</button>
                 <button type="button" onclick="setPreset('g7')" class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200">G7</button>
                 <button type="button" onclick="clearCountries()" class="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200">Clear</button>
@@ -55,16 +55,25 @@
         </div>
 
         <!-- Year range -->
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Year Start</label>
-                <input type="number" id="year-start" value="2000" min="1960" max="2030"
-                       class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Year Range</label>
+            <div class="flex gap-2 mb-2">
+                <button type="button" onclick="setYearMode('all')" id="btn-year-all"
+                        class="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded hover:bg-amber-200">All Available</button>
+                <button type="button" onclick="setYearMode('custom')" id="btn-year-custom"
+                        class="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200">Custom Range</button>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Year End</label>
-                <input type="number" id="year-end" value="2024" min="1960" max="2030"
-                       class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <div id="year-range-inputs" class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Year Start</label>
+                    <input type="number" id="year-start" value="2000" min="1960" max="2030"
+                           class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Year End</label>
+                    <input type="number" id="year-end" value="2024" min="1960" max="2030"
+                           class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                </div>
             </div>
         </div>
 
@@ -85,7 +94,11 @@
 
 <script>
 const PRESETS = {
-    lac7: ['ARG', 'BRA', 'CHL', 'COL', 'MEX', 'PER', 'CRI'],
+    latam: [
+        'ARG', 'BOL', 'BRA', 'CHL', 'COL', 'CRI', 'CUB', 'DOM', 'ECU',
+        'SLV', 'GTM', 'HTI', 'HND', 'MEX', 'NIC', 'PAN', 'PRY', 'PER',
+        'URY', 'VEN',
+    ],
     brics: ['BRA', 'RUS', 'IND', 'CHN', 'ZAF'],
     g7: ['USA', 'GBR', 'FRA', 'DEU', 'JPN', 'ITA', 'CAN'],
 };
@@ -97,6 +110,26 @@ function clearCountries() {
     document.getElementById('country-codes').value = '';
 }
 
+/* Year range mode: "all" fetches the widest range (1960–2025), "custom" uses user inputs */
+let yearMode = 'custom';
+
+function setYearMode(mode) {
+    yearMode = mode;
+    const inputs = document.getElementById('year-range-inputs');
+    const btnAll = document.getElementById('btn-year-all');
+    const btnCustom = document.getElementById('btn-year-custom');
+
+    if (mode === 'all') {
+        inputs.classList.add('opacity-50', 'pointer-events-none');
+        btnAll.className = 'text-xs px-2 py-1 bg-amber-500 text-white rounded hover:bg-amber-600';
+        btnCustom.className = 'text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200';
+    } else {
+        inputs.classList.remove('opacity-50', 'pointer-events-none');
+        btnAll.className = 'text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded hover:bg-amber-200';
+        btnCustom.className = 'text-xs px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600';
+    }
+}
+
 async function submitDownload() {
     const statusEl = document.getElementById('download-status');
     statusEl.textContent = 'Submitting...';
@@ -105,9 +138,16 @@ async function submitDownload() {
         .split('\n').map(s => s.trim()).filter(Boolean);
     const countries = document.getElementById('country-codes').value
         .split('\n').map(s => s.trim()).filter(Boolean);
-    const yearStart = parseInt(document.getElementById('year-start').value);
-    const yearEnd = parseInt(document.getElementById('year-end').value);
     const sourceId = document.getElementById('source-select').value || null;
+
+    let yearStart, yearEnd;
+    if (yearMode === 'all') {
+        yearStart = 1960;
+        yearEnd = 2025;
+    } else {
+        yearStart = parseInt(document.getElementById('year-start').value);
+        yearEnd = parseInt(document.getElementById('year-end').value);
+    }
 
     if (!indicators.length) { statusEl.textContent = 'Please enter at least one indicator code.'; return; }
     if (!countries.length)  { statusEl.textContent = 'Please enter at least one country code.'; return; }
