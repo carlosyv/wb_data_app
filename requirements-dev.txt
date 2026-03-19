@@ -1,0 +1,6 @@
+# Dev / testing dependencies
+pytest
+pytest-cov
+pytest-asyncio
+ruff
+mypy

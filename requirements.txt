@@ -1,0 +1,8 @@
+# Core — adjust once stack is finalized
+# httpx            # HTTP client for World Bank API
+# sqlalchemy       # ORM / DB toolkit
+# psycopg2-binary  # PostgreSQL driver
+# alembic          # DB migrations
+# pydantic         # Data validation
+# fastapi          # Web framework (if chosen)
+# uvicorn          # ASGI server
