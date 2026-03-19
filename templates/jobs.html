@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Download Jobs{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-800">Download Jobs</h1>
+        <a href="/download" class="text-sm px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            New Download
+        </a>
+    </div>
+
+    <!-- Auto-refresh running jobs via HTMX -->
+    <div hx-get="/jobs" hx-trigger="every 5s [document.querySelector('[data-status=running]')]" hx-select="#jobs-table" hx-target="#jobs-table" hx-swap="outerHTML">
+    </div>
+
+    <div id="jobs-table" class="bg-white rounded-lg shadow overflow-hidden">
+        {% if jobs %}
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Indicators</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Countries</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Years</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Completed</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for job in jobs %}
+                <tr {% if job.status == 'running' %}data-status="running"{% endif %}>
+                    <td class="px-4 py-3 text-sm font-medium">#{{ job.id }}</td>
+                    <td class="px-4 py-3 text-sm">
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                            {% if job.status == 'completed' %}bg-green-100 text-green-800
+                            {% elif job.status == 'running' %}bg-blue-100 text-blue-800
+                            {% elif job.status == 'failed' %}bg-red-100 text-red-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ job.status }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm">
+                        <div class="flex items-center gap-2">
+                            <div class="w-24 bg-gray-200 rounded-full h-2">
+                                {% set pct = (job.completed_requests / job.total_requests * 100) if job.total_requests else 0 %}
+                                <div class="bg-blue-600 h-2 rounded-full" style="width: {{ pct|int }}%"></div>
+                            </div>
+                            <span class="text-xs text-gray-500">{{ job.completed_requests }}/{{ job.total_requests }}</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-xs text-gray-600 font-mono max-w-[200px] truncate">
+                        {{ (job.indicator_codes or [])|join(', ') }}
+                    </td>
+                    <td class="px-4 py-3 text-xs text-gray-600 font-mono">
+                        {{ (job.country_codes or [])|join(', ') }}
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-600">{{ job.year_start }}-{{ job.year_end }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500">{{ job.created_at.strftime('%m/%d %H:%M') if job.created_at else '-' }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500">{{ job.completed_at.strftime('%m/%d %H:%M') if job.completed_at else '-' }}</td>
+                </tr>
+                {% if job.error_log %}
+                <tr>
+                    <td colspan="8" class="px-4 py-2 bg-red-50 text-xs text-red-700 font-mono whitespace-pre-wrap">{{ job.error_log }}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="p-6 text-center text-gray-500">
+            No download jobs yet. <a href="/download" class="text-blue-600 hover:underline">Start one</a>.
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

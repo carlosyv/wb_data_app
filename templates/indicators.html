@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Indicators - {{ source.name if source else 'All' }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">
+                {{ source.name if source else 'All Indicators' }}
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">{{ total }} indicators found</p>
+        </div>
+        {% if source %}
+        <button
+            hx-post="/api/indicators/sync/{{ source.id }}"
+            hx-swap="none"
+            hx-on::after-request="window.location.reload()"
+            class="text-sm px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+            Sync Indicators
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Search -->
+    <form method="get" class="flex gap-3">
+        <input
+            type="text"
+            name="q"
+            value="{{ q }}"
+            placeholder="Search indicators (e.g. GDP, population, CO2)..."
+            class="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+        >
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
+            Search
+        </button>
+        {% if q %}
+        <a href="?page=1" class="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-md hover:bg-gray-300">Clear</a>
+        {% endif %}
+    </form>
+
+    <!-- Indicator table -->
+    {% if indicators %}
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Topic</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for ind in indicators %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-sm font-mono text-blue-700">{{ ind.code }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-800">{{ ind.name }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500">{{ ind.topic or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if pages > 1 %}
+    <nav class="flex justify-center items-center gap-2 mt-4">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}{% if q %}&q={{ q }}{% endif %}"
+           class="px-3 py-1 rounded bg-gray-200 text-gray-700 text-sm hover:bg-gray-300">&laquo; Prev</a>
+        {% endif %}
+        <span class="text-sm text-gray-600">Page {{ page }} of {{ pages }}</span>
+        {% if page < pages %}
+        <a href="?page={{ page + 1 }}{% if q %}&q={{ q }}{% endif %}"
+           class="px-3 py-1 rounded bg-gray-200 text-gray-700 text-sm hover:bg-gray-300">Next &raquo;</a>
+        {% endif %}
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+        <p class="text-yellow-700">No indicators found.
+        {% if source %}Click <strong>Sync Indicators</strong> to fetch them from the World Bank API.{% endif %}
+        </p>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

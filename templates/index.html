@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - WB Data Browser{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Stats banner -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow p-6 text-center">
+            <p class="text-3xl font-bold text-blue-700">{{ sources|length }}</p>
+            <p class="text-sm text-gray-500 mt-1">Data Sources</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6 text-center">
+            <p class="text-3xl font-bold text-green-600">{{ total_points|default(0) }}</p>
+            <p class="text-sm text-gray-500 mt-1">Data Points Stored</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6 text-center">
+            <p class="text-3xl font-bold text-purple-600">{{ recent_jobs|length }}</p>
+            <p class="text-sm text-gray-500 mt-1">Recent Jobs</p>
+        </div>
+    </div>
+
+    <!-- Sync controls -->
+    <div class="flex items-center gap-4">
+        <h2 class="text-xl font-semibold text-gray-800">World Bank Data Sources</h2>
+        <button
+            hx-post="/api/sources/sync"
+            hx-swap="none"
+            hx-on::after-request="window.location.reload()"
+            class="text-sm px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+            Sync Sources
+        </button>
+    </div>
+
+    <!-- Source cards -->
+    {% if sources %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for source in sources %}
+        <div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-5 flex flex-col justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800">{{ source.name }}</h3>
+                <p class="text-xs text-gray-400 mt-1">ID: {{ source.id }}</p>
+                <p class="text-sm text-gray-600 mt-2 line-clamp-3">
+                    {{ source.description or 'No description available.' }}
+                </p>
+            </div>
+            <div class="mt-4 flex items-center justify-between">
+                <a href="/sources/{{ source.id }}/indicators"
+                   class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                    Browse Indicators &rarr;
+                </a>
+                {% if source.last_synced_at %}
+                <span class="text-xs text-gray-400">
+                    Synced: {{ source.last_synced_at.strftime('%Y-%m-%d %H:%M') }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+        <p class="text-yellow-700">No sources loaded yet. Click <strong>Sync Sources</strong> to fetch the catalogue from the World Bank API.</p>
+    </div>
+    {% endif %}
+
+    <!-- Recent jobs -->
+    {% if recent_jobs %}
+    <div>
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Recent Download Jobs</h2>
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for job in recent_jobs %}
+                    <tr>
+                        <td class="px-4 py-3 text-sm"><a href="/api/downloads/{{ job.id }}" class="text-blue-600 hover:underline">#{{ job.id }}</a></td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                                {% if job.status == 'completed' %}bg-green-100 text-green-800
+                                {% elif job.status == 'running' %}bg-blue-100 text-blue-800
+                                {% elif job.status == 'failed' %}bg-red-100 text-red-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ job.status }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ job.completed_requests }}/{{ job.total_requests }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-500">{{ job.created_at.strftime('%Y-%m-%d %H:%M') if job.created_at else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
