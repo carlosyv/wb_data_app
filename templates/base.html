@@ -1,40 +1,68 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-gray-50">
+<html lang="en" class="h-full bg-gray-50 dark:bg-gray-900">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}WB Data Browser{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <script>
+        // Apply theme immediately to prevent FOUC
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+
+        // Theme toggle (inline to avoid static file caching issues)
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        }
+    </script>
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="/static/app.js" defer></script>
 </head>
-<body class="h-full">
+<body class="h-full dark:bg-gray-900">
 
 <!-- Navigation -->
-<nav class="bg-white shadow-sm border-b border-gray-200">
+<nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <div class="flex">
-                <a href="/" class="flex items-center px-2 text-xl font-bold text-blue-700">
+                <a href="/" class="flex items-center px-2 text-xl font-bold text-blue-700 dark:text-blue-400">
                     WB Data Browser
                 </a>
                 <div class="hidden sm:ml-8 sm:flex sm:space-x-6">
-                    <a href="/" class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500">
+                    <a href="/" class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 border-b-2 border-transparent hover:border-blue-500">
                         Dashboard
                     </a>
-                    <a href="/download" class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500">
+                    <a href="/download" class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 border-b-2 border-transparent hover:border-blue-500">
                         Download Data
                     </a>
-                    <a href="/jobs" class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500">
+                    <a href="/jobs" class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 border-b-2 border-transparent hover:border-blue-500">
                         Jobs
                     </a>
-                    <a href="/browse" class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500">
+                    <a href="/browse" class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 border-b-2 border-transparent hover:border-blue-500">
                         Browse Data
                     </a>
-                    <a href="/docs" target="_blank" class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-400 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500">
+                    <a href="/docs" target="_blank" class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 border-b-2 border-transparent hover:border-blue-500">
                         API Docs
                     </a>
                 </div>
+            </div>
+            <div class="flex items-center">
+                <button onclick="toggleTheme()" class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" title="Toggle dark mode">
+                    <svg id="theme-icon-light" class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>
+                    </svg>
+                    <svg id="theme-icon-dark" class="w-5 h-5 block dark:hidden" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+                    </svg>
+                </button>
             </div>
         </div>
     </div>
@@ -43,8 +71,8 @@
 <!-- Flash messages -->
 {% if flash_message %}
 <div class="max-w-7xl mx-auto px-4 mt-4">
-    <div class="rounded-md bg-green-50 p-4 border border-green-200">
-        <p class="text-sm text-green-700">{{ flash_message }}</p>
+    <div class="rounded-md bg-green-50 dark:bg-green-900/30 p-4 border border-green-200 dark:border-green-800">
+        <p class="text-sm text-green-700 dark:text-green-300">{{ flash_message }}</p>
     </div>
 </div>
 {% endif %}
@@ -55,10 +83,10 @@
 </main>
 
 <!-- Footer -->
-<footer class="border-t border-gray-200 mt-auto">
-    <div class="max-w-7xl mx-auto px-4 py-4 text-center text-sm text-gray-400">
+<footer class="border-t border-gray-200 dark:border-gray-700 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 py-4 text-center text-sm text-gray-400 dark:text-gray-500">
         World Bank Data Browser &mdash; Data sourced from the
-        <a href="https://data.worldbank.org/" class="text-blue-500 hover:underline" target="_blank">World Bank Open Data</a>
+        <a href="https://data.worldbank.org/" class="text-blue-500 dark:text-blue-400 hover:underline" target="_blank">World Bank Open Data</a>
     </div>
 </footer>
 

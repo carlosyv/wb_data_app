@@ -3,6 +3,12 @@
  * Most interactivity is handled by HTMX; this file provides helpers.
  */
 
+// Theme toggle
+function toggleTheme() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
 // Debounce helper for search inputs
 function debounce(fn, delay = 300) {
     let timer;
