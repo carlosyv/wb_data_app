@@ -48,6 +48,7 @@
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Code</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Name</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Topic</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Description</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -56,6 +57,11 @@
                     <td class="px-4 py-3 text-sm font-mono text-blue-700 dark:text-blue-400">{{ ind.code }}</td>
                     <td class="px-4 py-3 text-sm text-gray-800 dark:text-gray-200">{{ ind.name }}</td>
                     <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ ind.topic or '-' }}</td>
+                    <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 max-w-xs">
+                        {% if ind.source_note %}
+                        <span title="{{ ind.source_note }}">{{ ind.source_note[:200] }}{% if ind.source_note|length > 200 %}&hellip;{% endif %}</span>
+                        {% else %}-{% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

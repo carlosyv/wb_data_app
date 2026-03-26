@@ -20,6 +20,68 @@
         </div>
     </div>
 
+    <!-- Favorites section -->
+    {% if favorite_sources %}
+    <div>
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">&#9733; Favorites</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for source in favorite_sources %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-5 flex flex-col justify-between border-l-4 border-yellow-400 dark:border-yellow-500">
+                <div>
+                    <div class="flex items-start justify-between">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ source.name }}</h3>
+                        <button onclick="toggleFavorite({{ source.id }}, this)" title="Remove from favorites"
+                                class="ml-2 text-yellow-500 hover:text-yellow-600 dark:text-yellow-400 dark:hover:text-yellow-300 text-xl leading-none flex-shrink-0">&#9733;</button>
+                    </div>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">ID: {{ source.id }}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-300 mt-2 line-clamp-3">
+                        {{ source.description or 'No description available.' }}
+                    </p>
+                </div>
+                <div class="mt-4 flex items-center justify-between">
+                    <a href="/sources/{{ source.id }}/indicators"
+                       class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
+                        Browse Indicators &rarr;
+                    </a>
+                    {% if source.last_synced_at %}
+                    <span class="text-xs text-gray-400 dark:text-gray-500">
+                        Synced: {{ source.last_synced_at.strftime('%Y-%m-%d %H:%M') }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recently Accessed section -->
+    {% if last_accessed %}
+    <div>
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">&#128337; Recently Accessed</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {% for source in last_accessed %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-4 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-start justify-between">
+                        <h3 class="text-base font-semibold text-gray-800 dark:text-gray-100">{{ source.name }}</h3>
+                        <button onclick="toggleFavorite({{ source.id }}, this)" title="{{ 'Remove from favorites' if source.id in favorite_ids else 'Add to favorites' }}"
+                                class="ml-2 text-xl leading-none flex-shrink-0 {% if source.id in favorite_ids %}text-yellow-500 hover:text-yellow-600 dark:text-yellow-400{% else %}text-gray-300 hover:text-yellow-400 dark:text-gray-600 dark:hover:text-yellow-400{% endif %}">
+                            {% if source.id in favorite_ids %}&#9733;{% else %}&#9734;{% endif %}
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">ID: {{ source.id }}</p>
+                </div>
+                <a href="/sources/{{ source.id }}/indicators"
+                   class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium mt-3 inline-block">
+                    Browse Indicators &rarr;
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Sync controls -->
     <div class="flex items-center gap-4">
         <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">World Bank Data Sources</h2>
@@ -38,7 +100,13 @@
         {% for source in sources %}
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-5 flex flex-col justify-between">
             <div>
-                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ source.name }}</h3>
+                <div class="flex items-start justify-between">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ source.name }}</h3>
+                    <button onclick="toggleFavorite({{ source.id }}, this)" title="{{ 'Remove from favorites' if source.id in favorite_ids else 'Add to favorites' }}"
+                            class="ml-2 text-xl leading-none flex-shrink-0 {% if source.id in favorite_ids %}text-yellow-500 hover:text-yellow-600 dark:text-yellow-400{% else %}text-gray-300 hover:text-yellow-400 dark:text-gray-600 dark:hover:text-yellow-400{% endif %}">
+                        {% if source.id in favorite_ids %}&#9733;{% else %}&#9734;{% endif %}
+                    </button>
+                </div>
                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">ID: {{ source.id }}</p>
                 <p class="text-sm text-gray-600 dark:text-gray-300 mt-2 line-clamp-3">
                     {{ source.description or 'No description available.' }}
@@ -101,4 +169,19 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+async function toggleFavorite(sourceId, btn) {
+    try {
+        const resp = await fetch(`/api/sources/${sourceId}/favorite`, { method: 'POST' });
+        const data = await resp.json();
+        if (resp.ok) {
+            // Reload to update both the favorites section and star states
+            window.location.reload();
+        }
+    } catch (err) {
+        console.error('Failed to toggle favorite:', err);
+    }
+}
+</script>
 {% endblock %}
