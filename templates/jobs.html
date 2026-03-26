@@ -27,8 +27,9 @@
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Countries</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Years</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Data Points</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Created</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Completed</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Created (UTC)</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Completed (UTC)</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -77,12 +78,20 @@
                             <span class="text-gray-400 dark:text-gray-500">0</span>
                         {% endif %}
                     </td>
-                    <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ job.created_at.strftime('%m/%d %H:%M') if job.created_at else '-' }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ job.completed_at.strftime('%m/%d %H:%M') if job.completed_at else '-' }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ job.created_at.strftime('%m/%d %H:%M UTC') if job.created_at else '-' }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ job.completed_at.strftime('%m/%d %H:%M UTC') if job.completed_at else '-' }}</td>
+                    <td class="px-4 py-3 text-sm">
+                        {% if job.status == 'failed' %}
+                        <button onclick="retryJob({{ job.id }})"
+                                class="text-xs px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700">
+                            Retry
+                        </button>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% if job.error_log %}
                 <tr>
-                    <td colspan="9" class="px-4 py-2 bg-red-50 dark:bg-red-900/30 text-xs text-red-700 dark:text-red-300 font-mono whitespace-pre-wrap">{{ job.error_log }}</td>
+                    <td colspan="10" class="px-4 py-2 bg-red-50 dark:bg-red-900/30 text-xs text-red-700 dark:text-red-300 font-mono whitespace-pre-wrap">{{ job.error_log }}</td>
                 </tr>
                 {% endif %}
                 {% endfor %}
@@ -96,4 +105,20 @@
     </div>
 
 </div>
+
+<script>
+async function retryJob(jobId) {
+    try {
+        const resp = await fetch(`/api/downloads/${jobId}/retry`, { method: 'POST' });
+        const data = await resp.json();
+        if (resp.ok) {
+            window.location.reload();
+        } else {
+            alert(`Retry failed: ${data.detail || JSON.stringify(data)}`);
+        }
+    } catch (err) {
+        alert(`Network error: ${err.message}`);
+    }
+}
+</script>
 {% endblock %}

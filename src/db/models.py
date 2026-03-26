@@ -103,6 +103,32 @@ class WBIndicator(Base):
         return f"<WBIndicator {self.code} {self.name!r}>"
 
 
+# ── Source Favorites ─────────────────────────────────────────────────────
+
+
+class WBSourceFavorite(Base):
+    __tablename__ = "wb_source_favorites"
+
+    source_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("wb_sources.id"), primary_key=True
+    )
+
+
+# ── Source Access Log ─────────────────────────────────────────────────────
+
+
+class WBSourceAccess(Base):
+    __tablename__ = "wb_source_access_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("wb_sources.id"), index=True, nullable=False
+    )
+    accessed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 # ── Download Jobs ────────────────────────────────────────────────────────
 
 

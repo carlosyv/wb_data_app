@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.engine import get_session
-from src.db.models import WBCountry, WBDataPoint, WBDownloadJob, WBIndicator, WBSource
+from src.db.models import WBCountry, WBDataPoint, WBDownloadJob, WBIndicator, WBSource, WBSourceAccess, WBSourceFavorite
 
 router = APIRouter(tags=["pages"])
 
@@ -35,6 +35,30 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
         await session.execute(select(func.count()).select_from(WBDataPoint))
     ).scalar_one()
 
+    # Favorites
+    favorite_ids = set(
+        row[0] for row in (
+            await session.execute(select(WBSourceFavorite.source_id))
+        ).all()
+    )
+    favorite_sources = [s for s in sources if s.id in favorite_ids]
+
+    # Last 3 distinct accessed sources
+    last_accessed_subq = (
+        select(WBSourceAccess.source_id, func.max(WBSourceAccess.accessed_at).label("last"))
+        .group_by(WBSourceAccess.source_id)
+        .order_by(func.max(WBSourceAccess.accessed_at).desc())
+        .limit(3)
+        .subquery()
+    )
+    last_accessed = (
+        await session.execute(
+            select(WBSource)
+            .join(last_accessed_subq, WBSource.id == last_accessed_subq.c.source_id)
+            .order_by(last_accessed_subq.c.last.desc())
+        )
+    ).scalars().all()
+
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -42,6 +66,9 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
             "sources": sources,
             "recent_jobs": recent_jobs,
             "total_points": total_points,
+            "favorite_sources": favorite_sources,
+            "favorite_ids": favorite_ids,
+            "last_accessed": last_accessed,
         },
     )
 
@@ -63,6 +90,11 @@ async def indicators_page(
     source = (
         await session.execute(select(WBSource).where(WBSource.id == source_id))
     ).scalar_one_or_none()
+
+    # Record that this source was accessed
+    if source is not None:
+        session.add(WBSourceAccess(source_id=source_id))
+        await session.commit()
 
     stmt = select(WBIndicator).where(WBIndicator.source_id == source_id)
     if q:
@@ -144,23 +176,37 @@ async def browse_page(
     request: Request,
     indicator: str | None = Query(None),
     country: str | None = Query(None),
-    year_start: int | None = Query(None),
-    year_end: int | None = Query(None),
+    year_start: str | None = Query(None),
+    year_end: str | None = Query(None),
     page: int = Query(1, ge=1),
     session: AsyncSession = Depends(get_session),
 ):
     templates = _templates(request)
     per_page = 100
 
+    # Normalise empty strings from form submission to None
+    indicator = indicator or None
+    country = country or None
+    year_start_int: int | None = int(year_start) if year_start and year_start.strip().isdigit() else None
+    year_end_int: int | None = int(year_end) if year_end and year_end.strip().isdigit() else None
+
+    # Apply defaults when only an indicator is provided
+    defaults_applied = False
+    if indicator and not country and year_start_int is None and year_end_int is None:
+        country = "PER"
+        year_start_int = 2000
+        year_end_int = 2024
+        defaults_applied = True
+
     stmt = select(WBDataPoint)
     if indicator:
         stmt = stmt.where(WBDataPoint.indicator_code == indicator)
     if country:
         stmt = stmt.where(WBDataPoint.country_code == country)
-    if year_start is not None:
-        stmt = stmt.where(WBDataPoint.year >= year_start)
-    if year_end is not None:
-        stmt = stmt.where(WBDataPoint.year <= year_end)
+    if year_start_int is not None:
+        stmt = stmt.where(WBDataPoint.year >= year_start_int)
+    if year_end_int is not None:
+        stmt = stmt.where(WBDataPoint.year <= year_end_int)
 
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = (await session.execute(count_stmt)).scalar_one()
@@ -179,11 +225,12 @@ async def browse_page(
             "data_points": data_points,
             "indicator": indicator or "",
             "country": country or "",
-            "year_start": year_start or "",
-            "year_end": year_end or "",
+            "year_start": year_start_int or "",
+            "year_end": year_end_int or "",
             "page": page,
             "per_page": per_page,
             "total": total,
             "pages": (total + per_page - 1) // per_page if per_page else 1,
+            "defaults_applied": defaults_applied,
         },
     )

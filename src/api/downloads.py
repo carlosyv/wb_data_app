@@ -6,7 +6,7 @@ import csv
 import io
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,6 +59,7 @@ async def start_download(
 @router.post("/upload-csv")
 async def upload_csv(
     file: UploadFile,
+    country_codes: str = Form(""),
     session: AsyncSession = Depends(get_session),
 ):
     """Parse a World Bank CSV file and upsert data points into the database.
@@ -112,6 +113,15 @@ async def upload_csv(
     if not year_columns:
         raise HTTPException(400, "No year columns found in CSV header")
 
+    # Build allowed country set if a filter was provided
+    allowed_countries: set[str] = set()
+    if country_codes.strip():
+        allowed_countries = {
+            c.strip().upper()
+            for c in country_codes.replace(",", "\n").split("\n")
+            if c.strip()
+        }
+
     # Parse data rows
     upserted = 0
     skipped = 0
@@ -125,6 +135,9 @@ async def upload_csv(
         indicator_code = row[indicator_col].strip()
 
         if not country_code or not indicator_code:
+            continue
+
+        if allowed_countries and country_code not in allowed_countries:
             continue
 
         for col_i, year in year_columns:
@@ -166,6 +179,30 @@ async def upload_csv(
         "skipped": skipped,
         "errors": errors[:20],  # limit error output
     }
+
+
+@router.post("/{job_id}/retry")
+async def retry_download(
+    job_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    """Create a new job with the same parameters as a failed job."""
+    original = await get_job(session, job_id)
+    if original is None:
+        raise HTTPException(404, "Job not found")
+    if original.status != "failed":
+        raise HTTPException(400, "Only failed jobs can be retried")
+
+    new_job = await create_job(
+        session,
+        source_id=original.source_id,
+        indicator_codes=original.indicator_codes or [],
+        country_codes=original.country_codes or [],
+        year_start=original.year_start or 1960,
+        year_end=original.year_end or 2025,
+    )
+    start_job_background(new_job.id)
+    return {"job_id": new_job.id, "status": new_job.status}
 
 
 @router.get("/{job_id}")

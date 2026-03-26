@@ -99,28 +99,50 @@
         </p>
 
         <!-- WB Direct Download Link Generator -->
-        <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md p-4 space-y-2">
+        <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md p-4 space-y-3">
             <p class="text-sm font-medium text-blue-800 dark:text-blue-300">Generate WB Download Link</p>
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs text-blue-700 dark:text-blue-400 mb-1">Country (ISO3)</label>
-                    <input type="text" id="wb-link-country" placeholder="e.g. PER"
-                           class="w-full rounded-md border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm font-mono">
+            <div>
+                <label class="block text-xs text-blue-700 dark:text-blue-400 mb-1">Countries (ISO3)</label>
+                <div class="flex gap-2 mb-2">
+                    <button type="button" onclick="setLinkPreset('latam')" class="text-xs px-2 py-1 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded hover:bg-blue-300 dark:hover:bg-blue-700">Latin America</button>
+                    <button type="button" onclick="setLinkPreset('brics')" class="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-900">BRICS</button>
+                    <button type="button" onclick="setLinkPreset('g7')" class="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-900">G7</button>
+                    <button type="button" onclick="clearLinkCountries()" class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600">Clear</button>
                 </div>
-                <div>
-                    <label class="block text-xs text-blue-700 dark:text-blue-400 mb-1">Indicator Code</label>
-                    <input type="text" id="wb-link-indicator" placeholder="e.g. SE.XPD.TOTL.GD.ZS"
-                           class="w-full rounded-md border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm font-mono">
-                </div>
+                <textarea id="wb-link-countries" rows="3"
+                          placeholder="ISO3 codes, one per line. E.g.:&#10;ARG&#10;BRA&#10;CHL"
+                          class="w-full rounded-md border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-3 py-1.5 text-sm font-mono"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs text-blue-700 dark:text-blue-400 mb-1">Indicator Code</label>
+                <input type="text" id="wb-link-indicator" placeholder="e.g. SE.XPD.TOTL.GD.ZS"
+                       class="w-full rounded-md border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm font-mono">
             </div>
             <button type="button" onclick="generateWBLink()"
                     class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700">
                 Generate Link
             </button>
-            <div id="wb-link-output" class="hidden">
-                <a id="wb-link-url" href="#" target="_blank" rel="noopener"
-                   class="text-sm text-blue-600 dark:text-blue-400 underline break-all"></a>
+            <div id="wb-link-output" class="hidden space-y-1">
+                <div id="wb-link-urls"></div>
             </div>
+        </div>
+
+        <!-- Country filter for CSV upload -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Filter by Countries (optional)</label>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mb-2">Only import rows matching these countries. Leave empty to import all.</p>
+            <div class="flex gap-2 mb-2">
+                <button type="button" onclick="setCsvPreset('latam')" class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900">Latin America</button>
+                <button type="button" onclick="setCsvPreset('brics')" class="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-900">BRICS</button>
+                <button type="button" onclick="setCsvPreset('g7')" class="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-900">G7</button>
+                <button type="button" onclick="clearCsvCountries()" class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600">Clear</button>
+            </div>
+            <textarea
+                id="csv-country-codes"
+                rows="3"
+                placeholder="ISO3 codes, one per line. E.g.:&#10;ARG&#10;BRA&#10;CHL"
+                class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-3 py-2 text-sm font-mono"
+            ></textarea>
         </div>
 
         <!-- File Upload -->
@@ -159,6 +181,18 @@ function setPreset(name) {
 }
 function clearCountries() {
     document.getElementById('country-codes').value = '';
+}
+function setCsvPreset(name) {
+    document.getElementById('csv-country-codes').value = PRESETS[name].join('\n');
+}
+function clearCsvCountries() {
+    document.getElementById('csv-country-codes').value = '';
+}
+function setLinkPreset(name) {
+    document.getElementById('wb-link-countries').value = PRESETS[name].join('\n');
+}
+function clearLinkCountries() {
+    document.getElementById('wb-link-countries').value = '';
 }
 
 /* Year range mode: "all" fetches the widest range (1960–2025), "custom" uses user inputs */
@@ -229,19 +263,26 @@ async function submitDownload() {
 /* ── WB Direct Download Link Generator ─────────────────────────────── */
 
 function generateWBLink() {
-    const country = document.getElementById('wb-link-country').value.trim();
+    const countriesRaw = document.getElementById('wb-link-countries').value;
     const indicator = document.getElementById('wb-link-indicator').value.trim();
     const output = document.getElementById('wb-link-output');
-    const link = document.getElementById('wb-link-url');
+    const container = document.getElementById('wb-link-urls');
 
-    if (!country || !indicator) {
+    const countries = countriesRaw.split('\n').map(s => s.trim().toUpperCase()).filter(Boolean);
+
+    if (!countries.length || !indicator) {
         output.classList.add('hidden');
         return;
     }
 
-    const url = `https://api.worldbank.org/v2/country/${country}/indicator/${indicator}?source=2&downloadformat=csv`;
-    link.href = url;
-    link.textContent = url;
+    // WB API supports semicolon-separated country codes in one request
+    const countryParam = countries.join(';');
+    const url = `https://api.worldbank.org/v2/country/${countryParam}/indicator/${indicator}?downloadformat=csv`;
+
+    container.innerHTML = `
+        <p class="text-xs text-blue-700 dark:text-blue-400 mb-1">${countries.length} countr${countries.length === 1 ? 'y' : 'ies'} — click to download:</p>
+        <a href="${url}" target="_blank" rel="noopener"
+           class="text-sm text-blue-600 dark:text-blue-400 underline break-all">${url}</a>`;
     output.classList.remove('hidden');
 }
 
@@ -258,8 +299,13 @@ async function uploadCSV() {
 
     statusEl.textContent = 'Uploading...';
 
+    const csvCountries = document.getElementById('csv-country-codes').value.trim();
+
     const formData = new FormData();
     formData.append('file', fileInput.files[0]);
+    if (csvCountries) {
+        formData.append('country_codes', csvCountries);
+    }
 
     try {
         const resp = await fetch('/api/downloads/upload-csv', {
