@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.engine import get_session
@@ -98,7 +98,12 @@ async def indicators_page(
 
     stmt = select(WBIndicator).where(WBIndicator.source_id == source_id)
     if q:
-        stmt = stmt.where(WBIndicator.name.ilike(f"%{q}%"))
+        stmt = stmt.where(
+            or_(
+                WBIndicator.name.ilike(f"%{q}%"),
+                WBIndicator.code.ilike(f"%{q}%"),
+            )
+        )
 
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = (await session.execute(count_stmt)).scalar_one()

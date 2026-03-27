@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.engine import get_session
@@ -29,7 +29,12 @@ async def list_indicators(
 
     if q:
         # Use ILIKE for case-insensitive search (trigram index accelerates this)
-        stmt = stmt.where(WBIndicator.name.ilike(f"%{q}%"))
+        stmt = stmt.where(
+            or_(
+                WBIndicator.name.ilike(f"%{q}%"),
+                WBIndicator.code.ilike(f"%{q}%"),
+            )
+        )
 
     # Count total
     count_stmt = select(func.count()).select_from(stmt.subquery())
