@@ -1,4 +1,3 @@
-# Multi-stage build — adjust base image once tech stack is decided
 FROM python:3.12-slim AS base
 
 WORKDIR /app
@@ -13,6 +12,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Non-root user
+RUN groupadd -g 1000 appuser && useradd -u 1000 -g appuser -s /bin/sh appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8000
 
-CMD ["python", "-m", "src.api.main"]
+ENTRYPOINT ["/entrypoint.sh"]
