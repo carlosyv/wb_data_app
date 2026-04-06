@@ -1,7 +1,6 @@
 """FastAPI application entry point for the World Bank Data Browser.
 
 Start with:
-    cd /Users/carlosyalta/Documentos/claude-workspace/wb_data_app
     uvicorn src.main:app --reload
 """
 
