@@ -10,7 +10,7 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./init-extensions.sql:/docker-entrypoint-initdb.d/01-extensions.sql:ro
+      - ./docker/init-extensions.sql:/docker-entrypoint-initdb.d/01-extensions.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-user} -d wb_web_app"]
       interval: 5s
@@ -20,14 +20,14 @@ services:
 
   app:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     env_file:
-      - ../.env
+      - .env
     environment:
       DB_HOST: db
     ports:

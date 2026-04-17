@@ -12,9 +12,9 @@ A web application for browsing, downloading, and querying data from the [World B
 
 ## Prerequisites
 
-- Python 3.12+
-- PostgreSQL 16+ (or Docker)
-- Git
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+
+That's it — no local Python, PostgreSQL, or other dependencies needed.
 
 ## Getting Started
 
@@ -29,59 +29,41 @@ cd wb_data_app
 
 ```bash
 cp .env.example .env
-# Edit .env with your database credentials
 ```
 
-### 3. Start the database
+Edit `.env` if you want to change the default database credentials or port. The defaults work out of the box.
 
-**Option A — Docker (recommended):**
+### 3. Start the app
 
 ```bash
-cd docker && docker compose up db -d
+docker compose up -d --build
 ```
 
-This starts a PostgreSQL 16 container with the `pg_trgm` extension pre-configured.
+This will:
 
-**Option B — Local PostgreSQL:**
+1. Start a PostgreSQL 16 database with the `pg_trgm` extension
+2. Build the Python application image
+3. Wait for the database to be healthy
+4. Run Alembic migrations automatically
+5. Start the FastAPI server
 
-Make sure you have a running PostgreSQL instance and create the database:
+The app will be available at **[http://localhost:8000](http://localhost:8000)**. On first startup, it automatically syncs the World Bank catalogue (this may take a minute).
 
-```sql
-CREATE DATABASE wb_web_app;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-```
-
-### 4. Install Python dependencies
+### Useful commands
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate   # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+# View logs
+docker compose logs -f app
+
+# Stop everything
+docker compose down
+
+# Stop and remove database volume (full reset)
+docker compose down -v
+
+# Rebuild after code changes
+docker compose up -d --build
 ```
-
-### 5. Run database migrations
-
-```bash
-alembic upgrade head
-```
-
-### 6. Start the app
-
-```bash
-uvicorn src.main:app --reload
-```
-
-The app will be available at [http://localhost:8000](http://localhost:8000). On first startup, it automatically syncs the World Bank catalogue if the database is empty.
-
-### Full-stack with Docker
-
-To run both the database and the app in Docker:
-
-```bash
-cd docker && docker compose up -d
-```
-
-The entrypoint script waits for PostgreSQL to be ready, runs migrations, and starts the server.
 
 ## Project Structure
 
@@ -100,45 +82,22 @@ wb_data_app/
 ├── templates/             # Jinja2 HTML templates (dashboard, browse, download, etc.)
 ├── static/                # Client-side JavaScript
 ├── tests/                 # Test suite
-├── docker/                # Dockerfile, docker-compose.yml, entrypoint, init SQL
-├── .github/workflows/     # CI pipeline (lint + test)
+├── docker/
+│   ├── Dockerfile         # Multi-stage build (production + test)
+│   ├── entrypoint.sh      # Waits for DB, runs migrations, starts server
+│   └── init-extensions.sql
+├── docker-compose.yml     # Orchestrates app + database
+├── .github/workflows/     # CI pipeline (lint + test via Docker)
 ├── .env.example           # Template for environment variables
 ├── alembic.ini            # Alembic configuration
-├── requirements.txt       # Production dependencies
-└── requirements-dev.txt   # Dev/test dependencies (pytest, ruff, mypy)
-```
-
-## Development
-
-### Install dev dependencies
-
-```bash
-pip install -r requirements-dev.txt
-```
-
-### Run tests
-
-```bash
-pytest tests/ -v
-```
-
-### Lint
-
-```bash
-ruff check .
-```
-
-### Type checking
-
-```bash
-mypy src/
+└── requirements.txt       # Python dependencies
 ```
 
 ## Environment Variables
 
 | Variable | Description | Default |
 |---|---|---|
-| `DB_HOST` | PostgreSQL host | `localhost` |
+| `DB_HOST` | PostgreSQL host (set to `db` by Docker Compose) | `localhost` |
 | `DB_PORT` | PostgreSQL port | `5432` |
 | `DB_NAME` | Database name | `wb_web_app` |
 | `DB_USER` | Database user | `user` |
@@ -147,6 +106,17 @@ mypy src/
 | `APP_ENV` | Environment (development/production) | `development` |
 | `APP_PORT` | Application port | `8000` |
 | `APP_DEBUG` | Enable debug mode | `true` |
+
+## Running Tests
+
+Tests run inside Docker, matching the production environment:
+
+```bash
+docker build --target test -t wb-data-app:test -f docker/Dockerfile .
+docker compose up -d
+docker compose exec app pip install pytest pytest-cov pytest-asyncio
+docker compose exec app pytest tests/ -v
+```
 
 ## License
 

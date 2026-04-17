@@ -7,54 +7,45 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: wb_web_app_test
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+      - name: Build test image
+        run: docker build --target test -t wb-data-app:test -f docker/Dockerfile .
 
       - name: Run linter
+        run: docker run --rm wb-data-app:test ruff check .
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test env file
         run: |
-          pip install ruff
-          ruff check .
+          cat > .env <<EOF
+          DB_HOST=db
+          DB_PORT=5432
+          DB_NAME=wb_web_app
+          DB_USER=user
+          DB_PASSWORD=password
+          WB_API_BASE_URL=https://api.worldbank.org/v2
+          APP_ENV=test
+          APP_PORT=8000
+          APP_DEBUG=false
+          EOF
+
+      - name: Build and start services
+        run: docker compose up -d --build --wait
 
       - name: Run tests
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/wb_web_app_test
-        run: pytest tests/ -v --tb=short
+        run: |
+          docker compose exec -T app pip install --no-cache-dir pytest pytest-cov pytest-asyncio
+          docker compose exec -T app pytest tests/ -v --tb=short
 
-  # Uncomment when frontend is set up
-  # frontend-test:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: "20"
-  #     - run: cd frontend && npm ci && npm test
+      - name: Shut down
+        if: always()
+        run: docker compose down -v

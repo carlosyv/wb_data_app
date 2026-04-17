@@ -25,3 +25,10 @@ USER appuser
 EXPOSE 8000
 
 ENTRYPOINT ["/entrypoint.sh"]
+
+# ── Test stage (used by CI) ─────────────────────────────────────────────
+FROM base AS test
+
+USER root
+RUN pip install --no-cache-dir pytest pytest-cov pytest-asyncio ruff mypy
+USER appuser
