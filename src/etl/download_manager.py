@@ -15,7 +15,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.engine import async_session_factory
-from src.db.models import WBDataPoint, WBDownloadJob
+from src.db.models import WBCountry, WBDataPoint, WBDownloadJob
 from src.etl.wb_client import wb_client
 
 logger = logging.getLogger(__name__)
@@ -66,6 +66,13 @@ async def _run_job(job_id: int) -> None:
             job.status = "running"
             await session.commit()
 
+            # Resolve "all" wildcard to the actual country codes in our DB
+            country_codes = job.country_codes or []
+            if country_codes == ["all"]:
+                rows = await session.execute(select(WBCountry.iso3_code))
+                country_codes = list(rows.scalars().all())
+                logger.info("Job %d: resolved 'all' to %d countries", job_id, len(country_codes))
+
             errors: list[str] = []
             completed = 0
             total_inserted = 0
@@ -74,13 +81,15 @@ async def _run_job(job_id: int) -> None:
                 try:
                     data_points = await wb_client.get_data(
                         indicator=indicator_code,
-                        countries=job.country_codes or [],
+                        countries=country_codes,
                         year_start=job.year_start or 1960,
                         year_end=job.year_end or 2025,
                     )
 
                     # Upsert data points in batches
                     for dp in data_points:
+                        if not dp.country_code:
+                            continue
                         total_inserted += 1
                         stmt = pg_insert(WBDataPoint).values(
                             indicator_code=dp.indicator_code,

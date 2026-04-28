@@ -341,6 +341,11 @@ class WBClient:
                 iso3 = item.get("countryiso3code", country_info.get("id", ""))
                 year_str = item.get("date", "")
 
+                # Skip aggregates/regions that come back with an empty or
+                # non-ISO3 country code — they have no matching wb_countries row.
+                if not iso3 or len(iso3) != 3:
+                    continue
+
                 try:
                     year = int(year_str)
                 except (ValueError, TypeError):
