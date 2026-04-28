@@ -190,8 +190,8 @@ async def retry_download(
     original = await get_job(session, job_id)
     if original is None:
         raise HTTPException(404, "Job not found")
-    if original.status not in ("failed", "running"):
-        raise HTTPException(400, "Only failed or running jobs can be retried")
+    if original.status not in ("failed", "running", "empty"):
+        raise HTTPException(400, "Only failed, empty, or running jobs can be retried")
 
     new_job = await create_job(
         session,

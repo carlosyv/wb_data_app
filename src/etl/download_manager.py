@@ -68,6 +68,7 @@ async def _run_job(job_id: int) -> None:
 
             errors: list[str] = []
             completed = 0
+            total_inserted = 0
 
             for indicator_code in (job.indicator_codes or []):
                 try:
@@ -80,6 +81,7 @@ async def _run_job(job_id: int) -> None:
 
                     # Upsert data points in batches
                     for dp in data_points:
+                        total_inserted += 1
                         stmt = pg_insert(WBDataPoint).values(
                             indicator_code=dp.indicator_code,
                             country_code=dp.country_code,
@@ -123,7 +125,12 @@ async def _run_job(job_id: int) -> None:
                     await session.rollback()
 
             # Finalize job
-            final_status = "completed" if not errors else ("failed" if completed == 0 else "completed")
+            if errors and completed == 0:
+                final_status = "failed"
+            elif total_inserted == 0:
+                final_status = "empty"
+            else:
+                final_status = "completed"
             await session.execute(
                 update(WBDownloadJob)
                 .where(WBDownloadJob.id == job_id)
