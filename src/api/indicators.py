@@ -7,7 +7,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.engine import get_session
-from src.db.models import WBIndicator
+from src.db.models import WBDataPoint, WBIndicator
 from src.etl.catalog_sync import sync_indicators_for_source
 
 router = APIRouter(prefix="/api/indicators", tags=["indicators"])
@@ -61,6 +61,25 @@ async def list_indicators(
             for ind in indicators
         ],
     }
+
+
+@router.get("/downloaded")
+async def list_downloaded_indicators(
+    source_id: int | None = Query(None, description="Filter by source ID"),
+    session: AsyncSession = Depends(get_session),
+):
+    """List distinct indicator codes that already have data points stored locally."""
+    stmt = select(WBDataPoint.indicator_code).distinct()
+
+    if source_id is not None:
+        stmt = stmt.join(
+            WBIndicator, WBIndicator.code == WBDataPoint.indicator_code
+        ).where(WBIndicator.source_id == source_id)
+
+    stmt = stmt.order_by(WBDataPoint.indicator_code)
+    result = await session.execute(stmt)
+    codes = [row[0] for row in result.all()]
+    return {"codes": codes, "count": len(codes)}
 
 
 @router.post("/sync/{source_id}")
