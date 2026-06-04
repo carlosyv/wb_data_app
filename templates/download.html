@@ -90,6 +90,82 @@
 
     </form>
 
+    <!-- Backfill a country with all already-downloaded indicators -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Backfill a country with all existing indicators</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+            Pick one or more countries and pull every indicator that already has data in your local database —
+            no need to retype the indicator codes.
+        </p>
+
+        <!-- Source filter (optional) -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Data Source (optional)</label>
+            <select id="backfill-source-select" class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm">
+                <option value="">-- All Sources --</option>
+                {% for source in sources %}
+                <option value="{{ source.id }}">{{ source.name }} (ID: {{ source.id }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Countries -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Countries</label>
+            <div class="flex gap-2 mb-2">
+                <button type="button" onclick="setBackfillPreset('latam')" class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900">Latin America</button>
+                <button type="button" onclick="setBackfillPreset('brics')" class="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-900">BRICS</button>
+                <button type="button" onclick="setBackfillPreset('g7')" class="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-900">G7</button>
+                <button type="button" onclick="clearBackfillCountries()" class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600">Clear</button>
+            </div>
+            <textarea
+                id="backfill-country-codes"
+                rows="3"
+                placeholder="ISO3 codes, one per line. E.g.:&#10;KEN&#10;NGA&#10;ETH"
+                class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-3 py-2 text-sm font-mono"
+            ></textarea>
+        </div>
+
+        <!-- Year range -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Year Range</label>
+            <div class="flex gap-2 mb-2">
+                <button type="button" onclick="setBackfillYearMode('all')" id="btn-backfill-year-all"
+                        class="text-xs px-2 py-1 bg-amber-500 text-white rounded hover:bg-amber-600">All Available</button>
+                <button type="button" onclick="setBackfillYearMode('custom')" id="btn-backfill-year-custom"
+                        class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600">Custom Range</button>
+            </div>
+            <div id="backfill-year-range-inputs" class="grid grid-cols-2 gap-4 opacity-50 pointer-events-none">
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Year Start</label>
+                    <input type="number" id="backfill-year-start" value="2000" min="1960" max="2030"
+                           class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Year End</label>
+                    <input type="number" id="backfill-year-end" value="2024" min="1960" max="2030"
+                           class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview + submit -->
+        <div class="flex items-center justify-between pt-2 gap-4 flex-wrap">
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="previewBackfillCount()"
+                        class="text-xs px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+                    Preview indicator count
+                </button>
+                <span id="backfill-preview" class="text-sm text-gray-500 dark:text-gray-400"></span>
+            </div>
+            <button type="button" onclick="submitBackfill()"
+                    class="px-6 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                Start Backfill
+            </button>
+        </div>
+        <div id="backfill-status" class="text-sm text-gray-500 dark:text-gray-400"></div>
+    </div>
+
     <!-- CSV Upload Section -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Upload World Bank CSV</h2>
@@ -254,6 +330,119 @@ async function submitDownload() {
             statusEl.innerHTML = `Job <a href="/api/downloads/${data.job_id}" class="text-blue-600 dark:text-blue-400 underline">#${data.job_id}</a> started! <a href="/jobs" class="text-blue-600 dark:text-blue-400 underline">View jobs</a>`;
         } else {
             statusEl.textContent = `Error: ${data.detail || JSON.stringify(data)}`;
+        }
+    } catch (err) {
+        statusEl.textContent = `Network error: ${err.message}`;
+    }
+}
+
+/* ── Backfill: all already-downloaded indicators for given countries ── */
+
+let backfillYearMode = 'all';
+
+function setBackfillPreset(name) {
+    document.getElementById('backfill-country-codes').value = PRESETS[name].join('\n');
+}
+function clearBackfillCountries() {
+    document.getElementById('backfill-country-codes').value = '';
+}
+
+function setBackfillYearMode(mode) {
+    backfillYearMode = mode;
+    const inputs = document.getElementById('backfill-year-range-inputs');
+    const btnAll = document.getElementById('btn-backfill-year-all');
+    const btnCustom = document.getElementById('btn-backfill-year-custom');
+
+    if (mode === 'all') {
+        inputs.classList.add('opacity-50', 'pointer-events-none');
+        btnAll.className = 'text-xs px-2 py-1 bg-amber-500 text-white rounded hover:bg-amber-600';
+        btnCustom.className = 'text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600';
+    } else {
+        inputs.classList.remove('opacity-50', 'pointer-events-none');
+        btnAll.className = 'text-xs px-2 py-1 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-200 dark:hover:bg-amber-900';
+        btnCustom.className = 'text-xs px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600';
+    }
+}
+
+async function fetchDownloadedIndicators() {
+    const sourceId = document.getElementById('backfill-source-select').value;
+    const url = sourceId
+        ? `/api/indicators/downloaded?source_id=${encodeURIComponent(sourceId)}`
+        : '/api/indicators/downloaded';
+    const resp = await fetch(url);
+    if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${resp.status}`);
+    }
+    return resp.json();
+}
+
+async function previewBackfillCount() {
+    const previewEl = document.getElementById('backfill-preview');
+    previewEl.textContent = 'Loading…';
+    try {
+        const data = await fetchDownloadedIndicators();
+        previewEl.textContent = `→ ${data.count} indicator${data.count === 1 ? '' : 's'} currently downloaded`;
+    } catch (err) {
+        previewEl.textContent = `Error: ${err.message}`;
+    }
+}
+
+async function submitBackfill() {
+    const statusEl = document.getElementById('backfill-status');
+    const countries = document.getElementById('backfill-country-codes').value
+        .split('\n').map(s => s.trim()).filter(Boolean);
+
+    if (!countries.length) {
+        statusEl.textContent = 'Please enter at least one country code.';
+        return;
+    }
+
+    let yearStart, yearEnd;
+    if (backfillYearMode === 'all') {
+        yearStart = 1960;
+        yearEnd = 2025;
+    } else {
+        yearStart = parseInt(document.getElementById('backfill-year-start').value);
+        yearEnd = parseInt(document.getElementById('backfill-year-end').value);
+    }
+
+    statusEl.textContent = 'Looking up downloaded indicators…';
+
+    let data;
+    try {
+        data = await fetchDownloadedIndicators();
+    } catch (err) {
+        statusEl.textContent = `Error: ${err.message}`;
+        return;
+    }
+
+    if (!data.count) {
+        statusEl.textContent = 'Nothing to backfill yet — download some indicators first.';
+        return;
+    }
+
+    const sourceId = document.getElementById('backfill-source-select').value || null;
+
+    statusEl.textContent = `Submitting backfill for ${data.count} indicators × ${countries.length} countr${countries.length === 1 ? 'y' : 'ies'}…`;
+
+    try {
+        const resp = await fetch('/api/downloads', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                source_id: sourceId ? parseInt(sourceId) : null,
+                indicator_codes: data.codes,
+                country_codes: countries,
+                year_start: yearStart,
+                year_end: yearEnd,
+            }),
+        });
+        const body = await resp.json();
+        if (resp.ok) {
+            statusEl.innerHTML = `Job <a href="/api/downloads/${body.job_id}" class="text-blue-600 dark:text-blue-400 underline">#${body.job_id}</a> started! <a href="/jobs" class="text-blue-600 dark:text-blue-400 underline">View jobs</a>`;
+        } else {
+            statusEl.textContent = `Error: ${body.detail || JSON.stringify(body)}`;
         }
     } catch (err) {
         statusEl.textContent = `Network error: ${err.message}`;
