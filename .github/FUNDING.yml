@@ -1,5 +1,11 @@
 # These are supported funding model platforms
 # GitHub displays a "Sponsor" button on your repo based on this file.
+<<<<<<< HEAD
 
 # github: carlosyv   # GitHub Sponsors (0% fees) — button appears once your profile is approved
 ko_fi: carlosyv    # Ko-fi button shows immediately, no approval needed
+=======
+ 
+# github: carlosyv            # Your GitHub Sponsors username (0% fees)
+ko_fi: carlosyv  # Uncomment and add your handle once your Ko-fi page is live
+>>>>>>> ab18228bc52ed8b6840322e26194fd19534bf829
