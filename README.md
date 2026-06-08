@@ -47,7 +47,7 @@ This will:
 4. Run Alembic migrations automatically
 5. Start the FastAPI server
 
-The app will be available at **[http://localhost:8000](http://localhost:8000)**. On first startup, it automatically syncs the World Bank catalogue (this may take a minute).
+The app will be available at **[http://localhost:9000](http://localhost:9000)**. On first startup, it automatically syncs the World Bank catalogue (this may take a minute).
 
 ### Useful commands
 
@@ -104,7 +104,7 @@ wb_data_app/
 | `DB_PASSWORD` | Database password | `changeme` |
 | `WB_API_BASE_URL` | World Bank API base URL | `https://api.worldbank.org/v2` |
 | `APP_ENV` | Environment (development/production) | `development` |
-| `APP_PORT` | Application port | `8000` |
+| `APP_PORT` | Application port | `9000` |
 | `APP_DEBUG` | Enable debug mode | `true` |
 
 ## Running Tests
