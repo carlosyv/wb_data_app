@@ -10,6 +10,31 @@ A web application for browsing, downloading, and querying data from the [World B
 - **Frontend:** Server-side Jinja2 templates with dark mode support
 - **Infrastructure:** Docker Compose, GitHub Actions CI
 
+## Architecture
+
+```mermaid
+flowchart TB
+    Browser["Browser<br/>Jinja2 pages + static/app.js"]
+
+    subgraph Compose["Docker Compose"]
+        direction LR
+        subgraph App["app container"]
+            FastAPI["FastAPI + Uvicorn<br/>HTML + JSON routes, ETL, async ORM"]
+        end
+        subgraph DBBox["db container"]
+            Postgres[("PostgreSQL 16<br/>pg_trgm extension")]
+        end
+        FastAPI <--> Postgres
+    end
+
+    WBAPI["World Bank<br/>Indicators API v2"]
+
+    Browser <--> FastAPI
+    FastAPI <--> WBAPI
+```
+
+The browser talks to the FastAPI app for both the server-rendered dashboard and its JSON endpoints. The app reads and writes PostgreSQL through an async SQLAlchemy ORM, and its ETL layer (`wb_client.py`, `catalog_sync.py`, `download_manager.py`) pulls catalogue and indicator data from the World Bank API in the background. The app and database run as two services under Docker Compose, with Alembic migrations applied automatically on container startup.
+
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
