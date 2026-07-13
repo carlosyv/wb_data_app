@@ -10,7 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
 
 COPY . .
 
@@ -30,5 +31,6 @@ ENTRYPOINT ["/entrypoint.sh"]
 FROM base AS test
 
 USER root
-RUN pip install --no-cache-dir pytest pytest-cov pytest-asyncio ruff mypy
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install pytest pytest-cov pytest-asyncio ruff mypy
 USER appuser
