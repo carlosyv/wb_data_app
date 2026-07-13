@@ -4,6 +4,10 @@ WORKDIR /app
 
 ENV PYTHONPATH=/app
 
+# Be tolerant of slow/unstable links to PyPI (raise pip's read timeout and retries)
+ENV PIP_DEFAULT_TIMEOUT=120 \
+    PIP_RETRIES=10
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \

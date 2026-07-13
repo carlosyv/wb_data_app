@@ -1,0 +1,7 @@
+# CI-only overlay. Layer on top of docker-compose.yml so the app image is
+# built from the `test` stage (which includes pytest, ruff, mypy):
+#   docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
+services:
+  app:
+    build:
+      target: test

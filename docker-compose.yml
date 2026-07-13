@@ -22,6 +22,9 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
+      # Lean prod image: stop at the base stage (no ruff/mypy/pytest).
+      # CI overrides this to `test` via docker-compose.ci.yml.
+      target: base
     restart: unless-stopped
     depends_on:
       db:
