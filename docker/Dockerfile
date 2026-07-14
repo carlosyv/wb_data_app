@@ -8,11 +8,6 @@ ENV PYTHONPATH=/app
 ENV PIP_DEFAULT_TIMEOUT=120 \
     PIP_RETRIES=10
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.txt
