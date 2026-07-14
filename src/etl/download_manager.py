@@ -10,6 +10,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
+import httpx
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +23,35 @@ logger = logging.getLogger(__name__)
 
 # Keep track of running background tasks so they aren't GC'd
 _background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
+
+
+def _describe_error(exc: Exception) -> str:
+    """Turn an exception into a one-line, human-readable error_log entry.
+
+    httpx's transport/timeout errors (e.g. ReadTimeout) carry no message text
+    by default, so ``str(exc)`` is often empty — pull the request URL and
+    exception type instead so the log line is actually useful.
+    """
+    exc_type = type(exc).__name__
+    request = getattr(exc, "_request", None)  # avoid RuntimeError from the .request property
+    url = str(request.url) if request is not None else "unknown URL"
+
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"{exc_type}: WB API returned HTTP {exc.response.status_code} for {url} (after retries)"
+    if isinstance(exc, httpx.TimeoutException):
+        kind = {
+            "ConnectTimeout": "connect",
+            "ReadTimeout": "read",
+            "WriteTimeout": "write",
+            "PoolTimeout": "pool",
+        }.get(exc_type, "request")
+        return f"{exc_type}: WB API did not respond ({kind} timeout) for {url} (after 5 retries)"
+    if isinstance(exc, httpx.TransportError):
+        detail = str(exc) or "connection failed"
+        return f"{exc_type}: {detail} for {url} (after 5 retries)"
+
+    detail = str(exc)
+    return f"{exc_type}: {detail}" if detail else exc_type
 
 
 async def create_job(
@@ -128,7 +158,7 @@ async def _run_job(job_id: int) -> None:
                     )
 
                 except Exception as exc:
-                    msg = f"{indicator_code}: {exc}"
+                    msg = f"{indicator_code}: {_describe_error(exc)}"
                     errors.append(msg)
                     logger.exception("Job %d error on %s", job_id, indicator_code)
                     await session.rollback()
